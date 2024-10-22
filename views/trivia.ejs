@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trivia Game</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        text-align: center;
+      }
+
+      .category-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin: 20px 0;
+      }
+
+      .category-box {
+        border: 2px solid #333;
+        padding: 20px;
+        margin: 10px;
+        border-radius: 8px;
+        width: 120px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .category-box:hover {
+        background-color: #d1e7dd;
+      }
+
+      #pagination {
+        margin: 20px;
+      }
+
+      #timer {
+        font-size: 20px;
+      }
+
+      .submit-button,
+      .next-button {
+        padding: 10px 20px;
+        margin-top: 10px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .submit-button:disabled,
+      .next-button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      /* Highlight selected radio button */
+      .highlight {
+        background-color: #d1e7dd;
+      }
+
+      label {
+        display: block;
+        margin: 10px 0;
+        cursor: pointer;
+      }
+
+      input[type="radio"] {
+        margin-right: 10px;
+      }
+    </style>
+    <script>
+      "use strict";
+      
+      var gameName = "<%= gameName %>";
+      var gameMode = "<%= mode %>";
+      var tokensUsed = "<%= tokensUsed %>";
+      // state
+      const state = {
+        questions: [],
+        currentQuestionIndex: 0,
+        score: 0,
+        selectedAnswer: null,
+        timer: null,
+        questionTimeLimit: 20, // 20 seconds per question
+        questionTimeout: null, // Stores the timeout for each question
+        difficulty: "easy",
+        selectedCategory: null,
+        fetchedQuestions: {
+          easy: [],
+          medium: [],
+          hard: [],
+        },
+        totalQuestionsAnswered: 0, // Track total questions answered
+      };
+
+      // DOM references
+      let answerResults,
+        question,
+        scoreElem,
+        submitButton,
+        nextButton,
+        formElem;
+
+      window.onload = function () {
+        answerResults = document.getElementById("resultsOfAnswer");
+        question = document.getElementById("question");
+        scoreElem = document.getElementById("score");
+        submitButton = document.getElementById("submit-answer");
+        nextButton = document.getElementById("next-question");
+        formElem = document.getElementById("current-question");
+
+        submitButton.disabled = true;
+        nextButton.disabled = true;
+
+        submitButton.addEventListener("click", submitAnswer);
+        nextButton.addEventListener("click", nextQuestion);
+
+        showCategorySelection();
+      };
+
+      function showCategorySelection() {
+        const categories = [
+          { name: "Entertainment: Film", id: 11 },
+          { name: "Entertainment: Books", id: 10 },
+          { name: "Entertainment: TV", id: 14 },
+          { name: "General Knowledge", id: 9 },
+          { name: "Entertainment: Musicals & Theater", id: 13 },
+          { name: "Sports", id: 21 },
+          { name: "History", id: 23 },
+          { name: "Geography", id: 22 },
+          { name: "Mythology", id: 20 },
+          { name: "Science & Nature", id: 17 },
+        ];
+
+        const categoryContainer = document.createElement("div");
+        categoryContainer.className = "category-container";
+
+        categories.forEach((category) => {
+          const box = document.createElement("div");
+          box.className = "category-box";
+          box.textContent = category.name;
+          box.onclick = () => selectCategory(category.id);
+          categoryContainer.appendChild(box);
+        });
+
+        document.body.insertBefore(categoryContainer, document.body.firstChild);
+        submitButton.style.display = "none";
+        nextButton.style.display = "none";
+      }
+
+      // Helper function to decode HTML entities
+      function decodeHtml(html) {
+        const textArea = document.createElement("textarea");
+        textArea.innerHTML = html;
+        return textArea.value;
+      }
+
+      function selectCategory(categoryId) {
+        state.selectedCategory = categoryId;
+        const categoryContainer = document.querySelector(".category-container");
+        if (categoryContainer) {
+          categoryContainer.remove();
+        }
+
+        fetchQuestions(state.difficulty);
+      }
+
+      async function fetchQuestions(difficulty, retries = 3, delay = 2000) {
+        try {
+          const response = await fetch(
+            `https://opentdb.com/api.php?amount=10&category=${state.selectedCategory}&difficulty=${difficulty}`
+          );
+          const data = await response.json();
+
+          if (!data.results || data.results.length === 0) {
+            throw new Error("No questions returned from API.");
+          }
+
+          // Store fetched questions only for the current difficulty level
+          state.fetchedQuestions[difficulty] = data.results;
+
+          // If this is the first fetch or a difficulty change, set the questions to be from the current difficulty
+          if (state.difficulty === difficulty) {
+            state.questions = [...state.fetchedQuestions[difficulty]]; // Replace previous difficulty questions
+            state.currentQuestionIndex = 0; // Reset question index for new difficulty
+            renderQuestion(); // Render the first question from the new set
+          }
+        } catch (error) {
+          console.error("Error fetching questions:", error);
+
+          if (retries > 0) {
+            setTimeout(
+              () => fetchQuestions(difficulty, retries - 1, delay),
+              delay
+            );
+          } else {
+            alert(
+              "Failed to fetch questions after multiple attempts. Please try again later."
+            );
+          }
+        }
+      }
+
+      function startQuestionTimer() {
+        let timeLeft = state.questionTimeLimit;
+        clearTimeout(state.questionTimeout); // Clear previous timer
+        document.getElementById(
+          "timer"
+        ).textContent = `Time left: ${timeLeft} seconds`;
+
+        state.questionTimeout = setInterval(() => {
+          timeLeft--;
+          document.getElementById(
+            "timer"
+          ).textContent = `Time left: ${timeLeft} seconds`;
+
+          if (timeLeft <= 0) {
+            clearInterval(state.questionTimeout);
+            nextQuestion();
+          }
+        }, 1000);
+      }
+
+      function renderQuestion() {
+        clearInterval(state.questionTimeout);
+        startQuestionTimer();
+
+        if (state.totalQuestionsAnswered === 30) {
+          endGame();
+          return;
+        }
+
+        const currentQuestion = state.questions[state.currentQuestionIndex];
+
+        answerResults.textContent = "";
+        question.textContent = decodeHtml(currentQuestion.question);
+        state.selectedAnswer = null;
+        submitButton.disabled = true;
+        submitButton.style.display = "inline";
+        nextButton.style.display = "none";
+
+        removeRadioButtons();
+
+        const allAnswers = [
+          ...currentQuestion.incorrect_answers.map(decodeHtml),
+          decodeHtml(currentQuestion.correct_answer),
+        ];
+        const shuffledAnswers = allAnswers.sort(() => Math.random() - 0.5);
+
+        shuffledAnswers.forEach((answer) => {
+          const label = document.createElement("label");
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = "answer";
+          radio.value = answer;
+          radio.onclick = () => selectAnswer(answer, label);
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(answer));
+          formElem.appendChild(label);
+        });
+      }
+
+      function removeRadioButtons() {
+        while (formElem.firstChild) {
+          formElem.removeChild(formElem.firstChild);
+        }
+      }
+
+      function selectAnswer(answer, label) {
+        state.selectedAnswer = answer;
+        submitButton.disabled = false;
+        label.classList.add("highlight");
+      }
+
+      function submitAnswer() {
+        if (!state.selectedAnswer) return;
+
+        const currentQuestion = state.questions[state.currentQuestionIndex];
+        const isCorrect =
+          state.selectedAnswer === decodeHtml(currentQuestion.correct_answer);
+        answerResults.textContent = isCorrect
+          ? "Congratulations! You got it right!"
+          : `Wrong! The correct answer was: ${decodeHtml(
+              currentQuestion.correct_answer
+            )}`;
+        state.score += isCorrect ? 1 : 0;
+        scoreElem.textContent = `Score: ${state.score}`;
+        submitButton.style.display = "none";
+        nextButton.style.display = "inline";
+        nextButton.disabled = false;
+      }
+
+      function nextQuestion() {
+        state.totalQuestionsAnswered++;
+        state.currentQuestionIndex++;
+
+        // If the user has answered 10 questions in the current difficulty, move to the next difficulty
+        if (state.currentQuestionIndex >= 10) {
+          if (state.difficulty === "easy") {
+            state.difficulty = "medium";
+            fetchQuestions("medium");
+            return; // Fetching new questions, so exit to wait for new questions
+          } else if (state.difficulty === "medium") {
+            state.difficulty = "hard";
+            fetchQuestions("hard");
+            return; // Fetching new questions, so exit to wait for new questions
+          }
+        }
+
+        renderQuestion();
+      }
+      function endGame() {
+        clearInterval(state.questionTimeout);
+        question.textContent = "Game Over!";
+        answerResults.textContent = `Your final score is: ${state.score}`;
+        alert(`Your final score is: ${state.score}`);
+        scoreElem.textContent = "";
+        submitButton.style.display = "none";
+        nextButton.style.display = "none";
+        document.getElementById("timer").textContent = ""; // Clear timer
+        fetch("/game/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gameName: gameName,
+            score: state.score,
+            mode: gameMode,
+            tokensUsed: tokensUsed,
+          }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              return response.text().then((text) => {
+                throw new Error(text);
+              });
+            }
+            return response.text();
+          })
+          .then(() => {
+            window.location.href = `/game/${gameName.toLowerCase()}`;
+          })
+          .catch((error) => {
+            window.location.href = `/game/${gameName.toLowerCase()}`;
+            setTimeout(() => alert(`${error.message}`), 100);
+          });
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Trivia Game</h1>
+    <div id="timer">Time left: 5:00</div>
+    <div id="question"></div>
+    <div id="resultsOfAnswer"></div>
+    <div id="score">Score: 0</div>
+    <form id="current-question"></form>
+    <button id="submit-answer" class="submit-button">Submit Answer</button>
+    <button id="next-question" class="next-button" disabled>
+      Next Question
+    </button>
+    <div id="right"></div>
+  </body>
+</html>
