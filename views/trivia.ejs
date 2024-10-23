@@ -13,10 +13,33 @@
 
       .category-container {
         display: grid;
-        grid-template-columns: repeat(4, 1fr); /* 3 equal columns */
-        grid-template-rows: auto ; /* Dynamic row heights */
-        justify-content: center;
-        margin: 50px 0;
+        grid-template-columns: repeat(4, 1fr); /* 4 equal columns */
+        max-width: 1200px; /* Limits how wide the container can stretch */
+        margin: 0 auto; /* Auto centers the container horizontally */
+        padding: 0 10px; /* Adds 20px padding to left and right */
+        column-gap: 5px; /* Reduces space between grid items (was 20px) */
+        row-gap: 5px; 
+      }
+
+      @media (max-width: 1200px) {
+        .category-container {
+          padding: 0 10px; /* Reduces padding on smaller screens */
+        }
+      }
+
+      @media (max-width: 768px) {
+        .category-container {
+          grid-template-columns: repeat(
+            2,
+            1fr
+          ); /* Changes to 2 columns on medium screens */
+        }
+      }
+
+      @media (max-width: 480px) {
+        .category-container {
+          grid-template-columns: 1fr; /* Single column on smaller screens */
+        }
       }
 
       .category-box {
