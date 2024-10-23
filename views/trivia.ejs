@@ -273,26 +273,32 @@
       function selectAnswer(answer, label) {
         state.selectedAnswer = answer;
         submitButton.disabled = false;
+
+        const labels = formElem.querySelectorAll('label');
+        labels.forEach((lbl) => lbl.classList.remove('highlight'));
+
         label.classList.add("highlight");
       }
 
+
       function submitAnswer() {
         if (!state.selectedAnswer) return;
+        
+        clearInterval(state.questionTimeout);
 
         const currentQuestion = state.questions[state.currentQuestionIndex];
         const isCorrect =
           state.selectedAnswer === decodeHtml(currentQuestion.correct_answer);
         answerResults.textContent = isCorrect
           ? "Congratulations! You got it right!"
-          : `Wrong! The correct answer was: ${decodeHtml(
-              currentQuestion.correct_answer
-            )}`;
+          : `Wrong! The correct answer was: ${decodeHtml(currentQuestion.correct_answer)}`;
         state.score += isCorrect ? 1 : 0;
         scoreElem.textContent = `Score: ${state.score}`;
         submitButton.style.display = "none";
         nextButton.style.display = "inline";
         nextButton.disabled = false;
       }
+
 
       function nextQuestion() {
         state.totalQuestionsAnswered++;
