@@ -12,10 +12,11 @@
       }
 
       .category-container {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); /* 3 equal columns */
+        grid-template-rows: auto ; /* Dynamic row heights */
         justify-content: center;
-        margin: 20px 0;
+        margin: 50px 0;
       }
 
       .category-box {
@@ -71,7 +72,7 @@
     </style>
     <script>
       "use strict";
-      
+
       var gameName = "<%= gameName %>";
       var gameMode = "<%= mode %>";
       var tokensUsed = "<%= tokensUsed %>";
@@ -126,6 +127,8 @@
           { name: "Entertainment: TV", id: 14 },
           { name: "General Knowledge", id: 9 },
           { name: "Entertainment: Musicals & Theater", id: 13 },
+          { name: "Entertainment: Japanese Anime & Manga", id: 31 },
+          { name: "Vehicle", id: 28 },
           { name: "Sports", id: 21 },
           { name: "History", id: 23 },
           { name: "Geography", id: 22 },
