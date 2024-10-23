@@ -18,7 +18,9 @@
         margin: 0 auto; /* Auto centers the container horizontally */
         padding: 0 10px; /* Adds 20px padding to left and right */
         column-gap: 5px; /* Reduces space between grid items (was 20px) */
-        row-gap: 5px; 
+        row-gap: 5px;
+        justify-content: center; /* Centers the grid horizontally */
+        align-content: center; /* Centers the grid vertically */
       }
 
       @media (max-width: 1200px) {
@@ -43,13 +45,21 @@
       }
 
       .category-box {
+        display: flex; /* Enable flexbox */
+        justify-content: center; /* Centers the text horizontally */
+        align-items: center; /* Centers the text vertically */
+        text-align: center; /* Centers multi-line text */
+
         border: 2px solid #333;
         padding: 20px;
         margin: 10px;
         border-radius: 8px;
         width: 120px;
+        height: 80px; /* Set a fixed height */
         cursor: pointer;
         transition: background-color 0.3s;
+        justify-self: center;
+        align-self: center;
       }
 
       .category-box:hover {
@@ -93,6 +103,22 @@
         margin-right: 10px;
       }
     </style>
+  </head>
+  <body>
+    <h1>Trivia Game</h1>
+    <p id="select-category-message">
+      Please select a category to start.
+    </p>
+    <div id="timer"></div>
+    <div id="question"></div>
+    <div id="resultsOfAnswer"></div>
+    <div id="score"></div>
+    <form id="current-question"></form>
+    <button id="submit-answer" class="submit-button">Submit Answer</button>
+    <button id="next-question" class="next-button" disabled>
+      Next Question
+    </button>
+    <div id="right"></div>
     <script>
       "use strict";
 
@@ -170,7 +196,12 @@
           categoryContainer.appendChild(box);
         });
 
-        document.body.insertBefore(categoryContainer, document.body.firstChild);
+        // Insert category container after the h1 title
+        const title = document.querySelector("h1");
+        const message = document.querySelector("p");
+        title.insertAdjacentElement("afterend", message);
+        message.insertAdjacentElement("afterend", categoryContainer);
+
         submitButton.style.display = "none";
         nextButton.style.display = "none";
       }
@@ -185,10 +216,18 @@
       function selectCategory(categoryId) {
         state.selectedCategory = categoryId;
         const categoryContainer = document.querySelector(".category-container");
+        const selectCategoryMessage = document.getElementById(
+          "select-category-message"
+        );
+
         if (categoryContainer) {
           categoryContainer.remove();
         }
 
+        // Hide the category selection message
+        selectCategoryMessage.style.display = "none";
+
+        // Start fetching questions once a category is selected
         fetchQuestions(state.difficulty);
       }
 
@@ -297,16 +336,15 @@
         state.selectedAnswer = answer;
         submitButton.disabled = false;
 
-        const labels = formElem.querySelectorAll('label');
-        labels.forEach((lbl) => lbl.classList.remove('highlight'));
+        const labels = formElem.querySelectorAll("label");
+        labels.forEach((lbl) => lbl.classList.remove("highlight"));
 
         label.classList.add("highlight");
       }
 
-
       function submitAnswer() {
         if (!state.selectedAnswer) return;
-        
+
         clearInterval(state.questionTimeout);
 
         const currentQuestion = state.questions[state.currentQuestionIndex];
@@ -314,14 +352,15 @@
           state.selectedAnswer === decodeHtml(currentQuestion.correct_answer);
         answerResults.textContent = isCorrect
           ? "Congratulations! You got it right!"
-          : `Wrong! The correct answer was: ${decodeHtml(currentQuestion.correct_answer)}`;
+          : `Wrong! The correct answer was: ${decodeHtml(
+              currentQuestion.correct_answer
+            )}`;
         state.score += isCorrect ? 1 : 0;
         scoreElem.textContent = `Score: ${state.score}`;
         submitButton.style.display = "none";
         nextButton.style.display = "inline";
         nextButton.disabled = false;
       }
-
 
       function nextQuestion() {
         state.totalQuestionsAnswered++;
@@ -380,18 +419,5 @@
           });
       }
     </script>
-  </head>
-  <body>
-    <h1>Trivia Game</h1>
-    <div id="timer"></div>
-    <div id="question"></div>
-    <div id="resultsOfAnswer"></div>
-    <div id="score"></div>
-    <form id="current-question"></form>
-    <button id="submit-answer" class="submit-button">Submit Answer</button>
-    <button id="next-question" class="next-button" disabled>
-      Next Question
-    </button>
-    <div id="right"></div>
   </body>
 </html>
